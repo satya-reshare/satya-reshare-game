@@ -1,0 +1,650 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Eco Rush — Satya ReShare</title>
+<style>
+  :root {
+    --paper: #F1E9D8;
+    --paper-2: #E8DFC9;
+    --kraft: #C9B896;
+    --ink: #1F2E1C;
+    --moss: #2F4A34;
+    --moss-dark: #1F3A2E;
+    --leaf: #8FBF7A;
+    --turmeric: #D9A441;
+    --turmeric-dark: #9A6B12;
+    --danger: #C1442C;
+    --gold: #E8B923;
+  }
+
+  * { box-sizing: border-box; }
+
+  html, body { height: 100%; }
+
+  body {
+    margin: 0;
+    font-family: 'Georgia', 'Times New Roman', serif;
+    background: var(--paper);
+    color: var(--ink);
+    min-height: 100vh;
+    min-height: 100dvh;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    overflow-x: hidden;
+    overflow-y: auto;
+    padding: 12px;
+  }
+
+  body.shake { animation: screenshake 0.25s ease; }
+  @keyframes screenshake {
+    0%, 100% { transform: translate(0,0); }
+    20% { transform: translate(-4px, 2px); }
+    40% { transform: translate(4px, -2px); }
+    60% { transform: translate(-3px, -2px); }
+    80% { transform: translate(3px, 2px); }
+  }
+
+  .game-wrap { width: 100%; max-width: 480px; margin: 0 auto; }
+
+  .card {
+    background: var(--paper);
+    border-radius: 20px;
+    overflow: hidden;
+    box-shadow: 0 1px 2px rgba(31,46,36,0.06), 0 8px 20px rgba(31,46,36,0.10), 0 24px 48px rgba(31,46,36,0.10);
+    border: 1px solid rgba(31,46,36,0.08);
+  }
+
+  .header {
+    background: var(--moss-dark);
+    color: var(--paper);
+    padding: 16px 20px 12px;
+    text-align: center;
+  }
+
+  .header .logo { display: inline-flex; align-items: center; gap: 8px; font-size: clamp(1.05rem, 4vw, 1.3rem); font-weight: 700; }
+  .header .logo-icon {
+    display: inline-flex; align-items: center; justify-content: center;
+    width: 30px; height: 30px; border-radius: 50%; flex-shrink: 0;
+    background: var(--leaf); color: var(--moss-dark); font-size: 1.1rem;
+    animation: spin-slow 10s linear infinite;
+  }
+  @keyframes spin-slow { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
+  .header .subtitle { font-size: clamp(0.68rem, 2.6vw, 0.78rem); opacity: 0.75; margin-top: 2px; }
+
+  .stat-bar {
+    display: flex; justify-content: space-between; align-items: center;
+    background: var(--paper-2); padding: 10px 14px;
+    border-bottom: 1px solid rgba(31,46,36,0.08);
+    font-family: -apple-system, sans-serif;
+    font-size: clamp(0.72rem, 3vw, 0.85rem);
+    gap: 6px;
+  }
+  .stat-bar .score-val { font-weight: 800; color: var(--moss-dark); font-size: clamp(1rem, 4vw, 1.25rem); }
+  .stat-bar .time-val { font-weight: 800; color: var(--danger); font-size: clamp(0.95rem, 3.5vw, 1.1rem); min-width: 36px; text-align: right; }
+
+  .combo-bar {
+    max-height: 0;
+    overflow: hidden;
+    display: flex; align-items: center; justify-content: center;
+    background: var(--turmeric);
+    color: var(--ink);
+    font-family: -apple-system, sans-serif;
+    font-weight: 800;
+    font-size: 0.82rem;
+    transition: max-height 0.25s ease;
+  }
+  .combo-bar.visible { max-height: 26px; }
+
+  .stage {
+    position: relative;
+    height: clamp(240px, 42vh, 340px);
+    background:
+      radial-gradient(circle at 20% 10%, rgba(143,191,122,0.15), transparent 40%),
+      linear-gradient(180deg, var(--paper) 0%, var(--paper-2) 100%);
+    overflow: hidden;
+  }
+
+  .falling-item {
+    position: absolute;
+    display: flex; flex-direction: column; align-items: center;
+    pointer-events: none;
+    filter: drop-shadow(0 6px 8px rgba(0,0,0,0.15));
+    transition: filter 0.15s ease;
+  }
+  .falling-item.golden .emoji { filter: drop-shadow(0 0 10px var(--gold)); }
+  .falling-item .emoji { font-size: clamp(2.3rem, 9vw, 3.4rem); line-height: 1; }
+  .falling-item .name-tag {
+    margin-top: 2px; background: rgba(31,46,36,0.85); color: var(--paper);
+    font-family: -apple-system, sans-serif; font-size: clamp(0.58rem, 2.2vw, 0.64rem);
+    padding: 2px 7px; border-radius: 999px; white-space: nowrap;
+  }
+  .falling-item.golden .name-tag { background: var(--turmeric-dark); }
+
+  .center-msg {
+    position: absolute; inset: 0;
+    display: flex; flex-direction: column; align-items: center; justify-content: center;
+    gap: 10px; padding: 16px; text-align: center;
+    overflow-y: auto;
+  }
+  .center-msg p { font-family: -apple-system, sans-serif; color: rgba(31,46,36,0.7); font-size: clamp(0.8rem, 3.2vw, 0.9rem); max-width: 300px; margin: 0; }
+
+  .btn {
+    font-family: -apple-system, sans-serif; font-weight: 700; font-size: clamp(0.82rem, 3.2vw, 0.95rem);
+    border: none; border-radius: 999px; padding: 12px 22px; cursor: pointer;
+    transition: transform 0.15s ease, box-shadow 0.15s ease;
+    position: relative; overflow: hidden;
+    max-width: 100%;
+  }
+  .btn::before {
+    content: ""; position: absolute; top: 0; left: -75%; width: 50%; height: 100%;
+    background: linear-gradient(120deg, transparent, rgba(255,255,255,0.4), transparent);
+    transform: skewX(-20deg); transition: left 0.5s ease;
+  }
+  .btn:hover::before { left: 125%; }
+  .btn:hover:not(:disabled) { transform: translateY(-2px); box-shadow: 0 8px 18px rgba(31,46,36,0.2); }
+  .btn:active:not(:disabled) { transform: translateY(0) scale(0.97); }
+  .btn-primary { background: var(--moss-dark); color: var(--paper); }
+  .btn-restart { background: var(--turmeric); color: var(--ink); }
+  .btn-small { padding: 8px 18px; font-size: 0.82rem; }
+
+  .score-feedback {
+    position: absolute; inset: 0;
+    display: flex; align-items: center; justify-content: center;
+    font-family: -apple-system, sans-serif; font-size: clamp(1.6rem, 8vw, 2.2rem); font-weight: 800;
+    pointer-events: none; opacity: 0;
+  }
+  .score-feedback.show-correct { color: var(--moss-dark); animation: pop-fade 0.45s ease forwards; }
+  .score-feedback.show-wrong { color: var(--danger); animation: pop-fade 0.45s ease forwards; }
+  .score-feedback.show-golden { color: var(--turmeric-dark); font-size: clamp(1.9rem, 9vw, 2.6rem); animation: pop-fade-big 0.6s ease forwards; }
+  @keyframes pop-fade {
+    0% { opacity: 0; transform: scale(0.6); }
+    30% { opacity: 1; transform: scale(1.15); }
+    100% { opacity: 0; transform: scale(1); }
+  }
+  @keyframes pop-fade-big {
+    0% { opacity: 0; transform: scale(0.4) rotate(-8deg); }
+    35% { opacity: 1; transform: scale(1.3) rotate(4deg); }
+    100% { opacity: 0; transform: scale(1) rotate(0); }
+  }
+
+  .confetti-piece {
+    position: absolute; top: -10px; width: 8px; height: 14px;
+    pointer-events: none;
+    animation: confetti-fall linear forwards;
+  }
+  @keyframes confetti-fall {
+    0% { transform: translateY(0) rotate(0deg); opacity: 1; }
+    100% { transform: translateY(360px) rotate(540deg); opacity: 0; }
+  }
+
+  .end-title { font-size: clamp(1.15rem, 5.5vw, 1.5rem); font-weight: 700; margin: 0; }
+  .end-score { font-family: -apple-system, sans-serif; font-size: clamp(0.9rem, 3.6vw, 1.05rem); color: rgba(31,46,36,0.8); }
+  .end-score b { color: var(--moss-dark); font-size: clamp(1.1rem, 4.5vw, 1.35rem); }
+
+  .name-input {
+    font-family: -apple-system, sans-serif;
+    border: 2px solid var(--moss);
+    border-radius: 999px;
+    padding: 8px 16px;
+    font-size: 0.9rem;
+    text-align: center;
+    width: min(200px, 100%);
+    background: white;
+    color: var(--ink);
+  }
+
+  .bins {
+    display: grid; grid-template-columns: repeat(3, 1fr); gap: clamp(6px, 2vw, 10px);
+    padding: 14px clamp(10px, 4vw, 16px); font-family: -apple-system, sans-serif;
+  }
+  .bin-btn {
+    border: none; border-radius: 14px; padding: 13px 4px;
+    display: flex; flex-direction: column; align-items: center; gap: 4px;
+    cursor: pointer; transition: transform 0.15s ease, box-shadow 0.15s ease;
+    font-weight: 700; font-size: clamp(0.68rem, 3vw, 0.85rem);
+    min-width: 0;
+  }
+  .bin-btn:active:not(:disabled) { transform: scale(0.94); }
+  .bin-btn:disabled { opacity: 0.35; cursor: default; }
+  .bin-btn .bin-icon { font-size: clamp(1.2rem, 5vw, 1.5rem); }
+  .bin-reuse { background: var(--moss); color: var(--paper); }
+  .bin-recycle { background: var(--turmeric); color: var(--ink); }
+  .bin-residu { background: var(--danger); color: var(--paper); }
+
+  .leaderboard {
+    font-family: -apple-system, sans-serif;
+    padding: 0 20px 16px;
+  }
+  .leaderboard h3 {
+    font-family: 'Georgia', serif;
+    font-size: 1rem; margin: 4px 0 8px; text-align: center; color: var(--moss-dark);
+  }
+  .lb-row {
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 6px 10px; border-radius: 8px; font-size: 0.85rem;
+  }
+  .lb-row:nth-child(odd) { background: var(--paper-2); }
+  .lb-row .lb-name { font-weight: 700; }
+  .lb-row .lb-score { color: var(--turmeric-dark); font-weight: 800; }
+  .lb-rank { display:inline-block; width: 22px; }
+
+  .footer-note {
+    text-align: center; font-family: -apple-system, sans-serif;
+    font-size: 0.7rem; color: rgba(31,46,36,0.45); padding: 8px 16px 14px;
+  }
+
+  .tabs {
+    display: flex; gap: 6px; padding: 10px 16px 0;
+    font-family: -apple-system, sans-serif;
+  }
+  .tab-btn {
+    flex: 1; border: none; background: var(--paper-2); color: rgba(31,46,36,0.6);
+    padding: 8px; border-radius: 10px 10px 0 0; font-weight: 700; font-size: 0.82rem;
+    cursor: pointer;
+  }
+  .tab-btn.active { background: var(--paper); color: var(--moss-dark); }
+
+  /* ---- Responsif tambahan untuk layar sangat sempit / pendek ---- */
+  @media (max-width: 360px) {
+    .header { padding: 12px 14px 10px; }
+    .footer-note { font-size: 0.62rem; padding: 6px 12px 12px; }
+    .bins { grid-template-columns: repeat(3, 1fr); gap: 6px; }
+  }
+
+  @media (max-height: 640px) {
+    .stage { height: clamp(200px, 38vh, 300px); }
+    .header { padding: 10px 16px 8px; }
+    .center-msg { gap: 8px; padding: 12px; }
+  }
+
+  @media (orientation: landscape) and (max-height: 480px) {
+    body { align-items: flex-start; }
+    .game-wrap { margin: 8px auto; }
+    .stage { height: clamp(160px, 50vh, 260px); }
+  }
+</style>
+</head>
+<body>
+
+<div class="game-wrap">
+  <div class="card">
+    <div class="header">
+      <div class="logo"><span class="logo-icon">&#9851;</span> Eco Rush</div>
+      <div class="subtitle">Satya ReShare &middot; IEC 2026 Stand Challenge</div>
+    </div>
+
+    <div class="stat-bar">
+      <div>Skor: <span class="score-val" id="scoreVal">0</span></div>
+      <div id="highScoreLabel">Rekor: <span id="highScoreVal">0</span></div>
+      <div class="time-val" id="timeVal">15s</div>
+    </div>
+
+    <div class="combo-bar" id="comboBar">COMBO x1</div>
+
+    <div class="stage" id="stage">
+      <div class="center-msg" id="idleScreen">
+        <p><b>Makin cepat, makin seru!</b> Sortir barang sebelum jatuh ke tanah. Kombo beruntun = poin berlipat. Ada barang emas bonus, jangan sampai kelewat!</p>
+        <button class="btn btn-primary" onclick="startGame()">Mulai Main</button>
+        <button class="btn btn-restart btn-small" onclick="showTab('leaderboard')">Lihat Papan Juara</button>
+      </div>
+
+      <div class="center-msg" id="endScreen" style="display:none;">
+        <p class="end-title" id="endTitle">Waktu Habis!</p>
+        <p class="end-score">Skor kamu: <b id="finalScore">0</b></p>
+        <div id="nameEntryBox" style="display:flex; flex-direction:column; gap:8px; align-items:center;">
+          <input type="text" id="nameInput" class="name-input" placeholder="Nama kamu" maxlength="14" />
+          <button class="btn btn-primary btn-small" onclick="submitScore()">Simpan ke Papan Juara</button>
+        </div>
+        <button class="btn btn-restart" onclick="startGame()">Main Lagi</button>
+        <button class="btn btn-primary btn-small" onclick="showTab('leaderboard')">Lihat Papan Juara</button>
+      </div>
+
+      <div class="score-feedback" id="feedback"></div>
+    </div>
+
+    <div class="bins">
+      <button class="bin-btn bin-reuse" id="binReuse" disabled onclick="handleBin('reuse')">
+        <span class="bin-icon">&#9851;</span> Reuse
+      </button>
+      <button class="bin-btn bin-recycle" id="binRecycle" disabled onclick="handleBin('recycle')">
+        <span class="bin-icon">&#128260;</span> Recycle
+      </button>
+      <button class="bin-btn bin-residu" id="binResidu" disabled onclick="handleBin('residu')">
+        <span class="bin-icon">&#128465;&#65039;</span> Residu
+      </button>
+    </div>
+
+    <div id="leaderboardPanel" class="leaderboard" style="display:none;">
+      <h3>&#127942; Papan Juara Stand</h3>
+      <div id="lbList"></div>
+      <div style="text-align:center; margin-top:10px;">
+        <button class="btn btn-restart btn-small" onclick="showTab('game')">Tutup</button>
+      </div>
+    </div>
+
+    <div class="footer-note">Satya ReShare &mdash; Barang nganggur kamu, bisa jadi berkah orang lain.</div>
+  </div>
+</div>
+
+<script>
+  const ITEM_POOL = [
+    // Reuse
+    { emoji: "📚", name: "Buku bekas", category: "reuse" },
+    { emoji: "👕", name: "Baju layak", category: "reuse" },
+    { emoji: "👟", name: "Sepatu bagus", category: "reuse" },
+    { emoji: "🎒", name: "Tas kuliah", category: "reuse" },
+    { emoji: "🧸", name: "Mainan lama", category: "reuse" },
+    { emoji: "⌚", name: "Jam tangan", category: "reuse" },
+    { emoji: "📱", name: "HP lama", category: "reuse" },
+    { emoji: "🎸", name: "Gitar bekas", category: "reuse" },
+    { emoji: "☂️", name: "Payung", category: "reuse" },
+    { emoji: "👓", name: "Kacamata", category: "reuse" },
+    { emoji: "🧳", name: "Koper lama", category: "reuse" },
+    { emoji: "⏰", name: "Jam dinding", category: "reuse" },
+    // Recycle
+    { emoji: "🧴", name: "Botol plastik", category: "recycle" },
+    { emoji: "🥫", name: "Kaleng bekas", category: "recycle" },
+    { emoji: "📄", name: "Kertas bekas", category: "recycle" },
+    { emoji: "📦", name: "Kardus", category: "recycle" },
+    { emoji: "🍾", name: "Botol kaca", category: "recycle" },
+    { emoji: "📰", name: "Koran lama", category: "recycle" },
+    { emoji: "💿", name: "CD/DVD", category: "recycle" },
+    { emoji: "🎨", name: "Kaleng cat", category: "recycle" },
+    { emoji: "✉️", name: "Amplop bekas", category: "recycle" },
+    { emoji: "💳", name: "Kartu lama", category: "recycle" },
+    // Residu
+    { emoji: "🍌", name: "Sisa makanan", category: "residu" },
+    { emoji: "🧻", name: "Tisu bekas", category: "residu" },
+    { emoji: "🔋", name: "Baterai bekas", category: "residu" },
+    { emoji: "🥤", name: "Gelas sekali pakai", category: "residu" },
+    { emoji: "🚬", name: "Puntung rokok", category: "residu" },
+    { emoji: "🧋", name: "Sedotan plastik", category: "residu" },
+    { emoji: "💡", name: "Bohlam pecah", category: "residu" },
+    { emoji: "😷", name: "Masker bekas", category: "residu" },
+    { emoji: "👶", name: "Popok bekas", category: "residu" },
+    { emoji: "🩹", name: "Plester bekas", category: "residu" },
+  ];
+
+  const GOLDEN_ITEM = { emoji: "🌟", name: "Barang Emas!", category: "golden" };
+
+  const GAME_DURATION = 15;
+  const MAX_LB = 5;
+
+  let score = 0, timeLeft = GAME_DURATION, combo = 0, highScore = 0;
+  let status = "idle";
+  let currentItem = null, itemEl = null;
+  let fallInterval = null, timerInterval = null, speedRampInterval = null;
+  let lastCategory = null;
+  let fallDurationMs = 2600;
+  const TICK_MS = 30;
+
+  // ---------- Web Audio synth (tanpa file eksternal) ----------
+  let audioCtx = null;
+  function ac() { if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)(); return audioCtx; }
+  function beep(freq, duration, type, gainVal) {
+    try {
+      const ctx = ac();
+      const osc = ctx.createOscillator();
+      const gain = ctx.createGain();
+      osc.type = type || "sine";
+      osc.frequency.value = freq;
+      gain.gain.value = gainVal || 0.08;
+      osc.connect(gain); gain.connect(ctx.destination);
+      osc.start();
+      gain.gain.exponentialRampToValueAtTime(0.0001, ctx.currentTime + duration);
+      osc.stop(ctx.currentTime + duration);
+    } catch (e) {}
+  }
+  function sfxCorrect(comboLevel) {
+    beep(520 + Math.min(comboLevel, 8) * 40, 0.12, "triangle", 0.09);
+  }
+  function sfxWrong() { beep(140, 0.22, "sawtooth", 0.08); }
+  function sfxGolden() {
+    beep(660, 0.1, "sine", 0.1);
+    setTimeout(() => beep(880, 0.15, "sine", 0.1), 90);
+    setTimeout(() => beep(1100, 0.2, "sine", 0.12), 180);
+  }
+  function sfxTick() { beep(300, 0.05, "square", 0.03); }
+
+  // ---------- Musik latar (loop sederhana, terus berbunyi selama main) ----------
+  let bgmInterval = null;
+  let bgmStep = 0;
+  const BGM_PATTERN = [330, 392, 440, 392, 330, 262, 330, 392]; // pola nada pentatonik pendek
+  function startBgm() {
+    stopBgm();
+    bgmStep = 0;
+    bgmInterval = setInterval(() => {
+      const note = BGM_PATTERN[bgmStep % BGM_PATTERN.length];
+      beep(note, 0.22, "sine", 0.035);
+      beep(note / 2, 0.3, "triangle", 0.02);
+      bgmStep++;
+    }, 260);
+  }
+  function stopBgm() {
+    if (bgmInterval) { clearInterval(bgmInterval); bgmInterval = null; }
+  }
+
+  // ---------- Leaderboard (localStorage) ----------
+  function getLeaderboard() {
+    return JSON.parse(localStorage.getItem("reshare_ecorush_leaderboard") || "[]");
+  }
+  function saveLeaderboard(list) {
+    localStorage.setItem("reshare_ecorush_leaderboard", JSON.stringify(list));
+  }
+  function renderLeaderboard() {
+    const list = getLeaderboard();
+    const el = document.getElementById("lbList");
+    if (list.length === 0) {
+      el.innerHTML = '<p style="text-align:center; color:rgba(31,46,36,0.5); font-size:0.85rem;">Belum ada yang main. Jadilah yang pertama!</p>';
+      return;
+    }
+    el.innerHTML = list.map((row, i) =>
+      '<div class="lb-row"><span><span class="lb-rank">' + (i+1) + '.</span><span class="lb-name">' + escapeHtml(row.name) + '</span></span><span class="lb-score">' + row.score + '</span></div>'
+    ).join("");
+  }
+  function escapeHtml(s) {
+    return s.replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+  }
+  function submitScore() {
+    const nameInput = document.getElementById("nameInput");
+    const name = (nameInput.value || "Anonim").trim().slice(0, 14) || "Anonim";
+    let list = getLeaderboard();
+    list.push({ name, score });
+    list.sort((a, b) => b.score - a.score);
+    list = list.slice(0, MAX_LB);
+    saveLeaderboard(list);
+    renderLeaderboard();
+    document.getElementById("nameEntryBox").style.display = "none";
+  }
+
+  function showTab(tab) {
+    document.getElementById("stage").style.display = tab === "game" ? "block" : "none";
+    document.getElementById("leaderboardPanel").style.display = tab === "leaderboard" ? "block" : "none";
+    document.querySelector(".bins").style.display = tab === "game" ? "grid" : "none";
+    if (tab === "leaderboard") renderLeaderboard();
+  }
+
+  highScore = Number(localStorage.getItem("reshare_ecorush_highscore") || 0);
+  document.getElementById("highScoreVal").textContent = highScore;
+  renderLeaderboard();
+
+  function pickItem() {
+    // 12% kemungkinan muncul barang emas bonus
+    if (Math.random() < 0.12) return { ...GOLDEN_ITEM };
+    let pick = ITEM_POOL[Math.floor(Math.random() * ITEM_POOL.length)];
+    let attempts = 0;
+    while (pick.category === lastCategory && attempts < 5) {
+      pick = ITEM_POOL[Math.floor(Math.random() * ITEM_POOL.length)];
+      attempts++;
+    }
+    lastCategory = pick.category;
+    return pick;
+  }
+
+  function spawnItem() {
+    currentItem = pickItem();
+    const isGolden = currentItem.category === "golden";
+
+    if (itemEl) itemEl.remove();
+    itemEl = document.createElement("div");
+    itemEl.className = "falling-item" + (isGolden ? " golden" : "");
+    const leftPos = 15 + Math.random() * 70;
+    itemEl.style.left = leftPos + "%";
+    itemEl.style.transform = "translateX(-50%)";
+    itemEl.style.top = "0%";
+    itemEl.innerHTML =
+      '<span class="emoji">' + currentItem.emoji + '</span>' +
+      '<span class="name-tag">' + currentItem.name + '</span>';
+    document.getElementById("stage").appendChild(itemEl);
+
+    let pos = 0;
+    if (fallInterval) clearInterval(fallInterval);
+    const stepPercent = 92 / (fallDurationMs / TICK_MS);
+    fallInterval = setInterval(() => {
+      pos += stepPercent;
+      if (pos >= 92) {
+        clearInterval(fallInterval);
+        if (!isGolden) { combo = 0; updateCombo(); }
+        spawnItem();
+        return;
+      }
+      itemEl.style.top = pos + "%";
+    }, TICK_MS);
+  }
+
+  function updateCombo() {
+    const bar = document.getElementById("comboBar");
+    if (combo >= 2) {
+      bar.textContent = "COMBO x" + Math.min(combo, 9) + "  🔥";
+      bar.classList.add("visible");
+    } else {
+      bar.classList.remove("visible");
+    }
+  }
+
+  function setBinsEnabled(enabled) {
+    document.getElementById("binReuse").disabled = !enabled;
+    document.getElementById("binRecycle").disabled = !enabled;
+    document.getElementById("binResidu").disabled = !enabled;
+  }
+
+  function burstConfetti() {
+    const stage = document.getElementById("stage");
+    const colors = ["#2F4A34", "#D9A441", "#8FBF7A", "#C1442C", "#E8B923"];
+    for (let i = 0; i < 24; i++) {
+      const piece = document.createElement("div");
+      piece.className = "confetti-piece";
+      piece.style.left = (Math.random() * 100) + "%";
+      piece.style.background = colors[Math.floor(Math.random() * colors.length)];
+      piece.style.animationDuration = (0.8 + Math.random() * 0.6) + "s";
+      stage.appendChild(piece);
+      setTimeout(() => piece.remove(), 1500);
+    }
+  }
+
+  function startGame() {
+    score = 0; combo = 0; timeLeft = GAME_DURATION; fallDurationMs = 2600;
+    status = "playing";
+    document.getElementById("scoreVal").textContent = score;
+    document.getElementById("timeVal").textContent = timeLeft + "s";
+    document.getElementById("idleScreen").style.display = "none";
+    document.getElementById("endScreen").style.display = "none";
+    document.getElementById("nameEntryBox").style.display = "flex";
+    updateCombo();
+    showTab("game");
+    setBinsEnabled(true);
+    spawnItem();
+    startBgm();
+
+    if (timerInterval) clearInterval(timerInterval);
+    timerInterval = setInterval(() => {
+      timeLeft -= 1;
+      document.getElementById("timeVal").textContent = timeLeft + "s";
+      if (timeLeft <= 5 && timeLeft > 0) sfxTick();
+      if (timeLeft <= 0) {
+        clearInterval(timerInterval);
+        endGame();
+      }
+    }, 1000);
+
+    if (speedRampInterval) clearInterval(speedRampInterval);
+    speedRampInterval = setInterval(() => {
+      fallDurationMs = Math.max(1200, fallDurationMs - 300);
+    }, 4000);
+  }
+
+  function endGame() {
+    status = "ended";
+    setBinsEnabled(false);
+    stopBgm();
+    if (fallInterval) clearInterval(fallInterval);
+    if (speedRampInterval) clearInterval(speedRampInterval);
+    if (itemEl) { itemEl.remove(); itemEl = null; }
+    document.getElementById("comboBar").classList.remove("visible");
+
+    const isNewHigh = score > highScore;
+    if (isNewHigh) {
+      highScore = score;
+      localStorage.setItem("reshare_ecorush_highscore", String(highScore));
+      document.getElementById("highScoreVal").textContent = highScore;
+    }
+
+    document.getElementById("finalScore").textContent = score;
+    document.getElementById("endTitle").textContent = isNewHigh ? "Rekor Baru! 🎉" : "Waktu Habis!";
+    if (isNewHigh) burstConfetti();
+
+    document.getElementById("nameInput").value = "";
+    document.getElementById("endScreen").style.display = "flex";
+  }
+
+  function showFeedback(type) {
+    const el = document.getElementById("feedback");
+    if (type === "golden") {
+      el.textContent = "+50 ⭐";
+      el.className = "score-feedback show-golden";
+    } else if (type === "correct") {
+      el.textContent = "+" + (10 + Math.min(combo, 9) * 5) + " ✔";
+      el.className = "score-feedback show-correct";
+    } else {
+      el.textContent = "-5 ✕";
+      el.className = "score-feedback show-wrong";
+    }
+    setTimeout(() => { el.className = "score-feedback"; }, 480);
+  }
+
+  function handleBin(category) {
+    if (status !== "playing" || !currentItem) return;
+
+    if (currentItem.category === "golden") {
+      score += 50;
+      showFeedback("golden");
+      sfxGolden();
+      burstConfetti();
+    } else if (currentItem.category === category) {
+      combo += 1;
+      const gained = 10 + Math.min(combo, 9) * 5;
+      score += gained;
+      showFeedback("correct");
+      sfxCorrect(combo);
+      updateCombo();
+      if (combo > 0 && combo % 5 === 0) {
+        document.body.classList.add("shake");
+        setTimeout(() => document.body.classList.remove("shake"), 260);
+      }
+    } else {
+      combo = 0;
+      score = Math.max(0, score - 5);
+      showFeedback("wrong");
+      sfxWrong();
+      updateCombo();
+    }
+    document.getElementById("scoreVal").textContent = score;
+    spawnItem();
+  }
+</script>
+
+</body>
+</html>
